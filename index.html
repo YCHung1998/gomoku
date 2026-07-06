@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>五子棋 Gomoku — Python in Browser</title>
+<style>
+  :root { --wood: #d9a45b; --line: #7a5222; }
+  body { font-family: -apple-system, "PingFang TC", sans-serif; background: #f5efe4;
+         display: flex; flex-direction: column; align-items: center; margin: 0; padding: 16px; }
+  h1 { font-size: 1.3rem; margin: 8px 0 2px; color: #4a3218; }
+  .sub { font-size: .8rem; color: #8a7355; margin-bottom: 10px; }
+  #toolbar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+  button, select { font-size: .95rem; padding: 7px 14px; border: 1px solid #b08d57;
+         border-radius: 8px; background: #fff8ec; color: #4a3218; cursor: pointer; }
+  button:hover { background: #f3e2c3; }
+  button:disabled { opacity: .45; cursor: default; }
+  #status { min-height: 1.4em; font-weight: 600; color: #4a3218; margin-bottom: 8px; }
+  canvas { border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.25); touch-action: manipulation; }
+  #loading { color: #8a7355; margin-top: 24px; }
+</style>
+</head>
+<body>
+<h1>五子棋 Gomoku</h1>
+<div class="sub">遊戲邏輯與 AI 由 <b>gomoku.py</b>（真 Python）透過 Pyodide 在你的瀏覽器中執行</div>
+<div id="toolbar">
+  <select id="mode">
+    <option value="ai">人機對戰（你執黑）</option>
+    <option value="pvp">雙人 PK</option>
+  </select>
+  <button id="undo">悔棋</button>
+  <button id="restart">重新開始</button>
+</div>
+<div id="status"></div>
+<div id="loading">正在載入 Python 執行環境（Pyodide，首次約 2–5 秒）…</div>
+<canvas id="board" width="640" height="640" style="display:none"></canvas>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+const SIZE = 15, CELL = 40, PAD = 20;
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+const statusEl = document.getElementById("status");
+const modeEl = document.getElementById("mode");
+const undoBtn = document.getElementById("undo");
+let pyodide = null, busy = false;
+
+function py(code) { return pyodide.runPython(code); }
+function getState() { return JSON.parse(py("game.state()")); }
+
+function draw(state) {
+  ctx.fillStyle = "#d9a45b";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "#7a5222"; ctx.lineWidth = 1;
+  for (let i = 0; i < SIZE; i++) {
+    const p = PAD + i * CELL + CELL / 2;
+    ctx.beginPath(); ctx.moveTo(PAD + CELL/2, p); ctx.lineTo(canvas.width - PAD - CELL/2, p); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p, PAD + CELL/2); ctx.lineTo(p, canvas.height - PAD - CELL/2); ctx.stroke();
+  }
+  // 星位
+  ctx.fillStyle = "#7a5222";
+  for (const [r, c] of [[3,3],[3,11],[11,3],[11,11],[7,7]]) {
+    ctx.beginPath();
+    ctx.arc(PAD + c*CELL + CELL/2, PAD + r*CELL + CELL/2, 4, 0, Math.PI*2); ctx.fill();
+  }
+  // 棋子
+  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+    const v = state.board[r][c];
+    if (!v) continue;
+    const x = PAD + c*CELL + CELL/2, y = PAD + r*CELL + CELL/2;
+    const g = ctx.createRadialGradient(x-5, y-5, 3, x, y, 17);
+    if (v === 1) { g.addColorStop(0, "#666"); g.addColorStop(1, "#000"); }
+    else { g.addColorStop(0, "#fff"); g.addColorStop(1, "#ccc"); }
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI*2); ctx.fill();
+  }
+  // 最後一手標記
+  if (state.last) {
+    const [r, c] = state.last;
+    ctx.strokeStyle = "#e33"; ctx.lineWidth = 2;
+    ctx.strokeRect(PAD + c*CELL + CELL/2 - 8, PAD + r*CELL + CELL/2 - 8, 16, 16);
+  }
+}
+
+function updateStatus(state) {
+  if (state.winner === "draw") statusEl.textContent = "平手！";
+  else if (state.winner) statusEl.textContent = (state.winner === 1 ? "⚫ 黑方" : "⚪ 白方") + " 獲勝！";
+  else statusEl.textContent = "輪到 " + (state.current === 1 ? "⚫ 黑方" : "⚪ 白方");
+  undoBtn.disabled = state.moves === 0 || busy;
+}
+
+function refresh() { const s = getState(); draw(s); updateStatus(s); return s; }
+
+async function aiTurn() {
+  busy = true; statusEl.textContent = "🤖 AI 思考中…";
+  try {
+    await new Promise(r => setTimeout(r, 30)); // 讓畫面先更新
+    py("_mv = game.ai_move()\nif _mv is not None:\n    game.place(_mv[0], _mv[1])");
+    busy = false; refresh();
+  } catch (err) {
+    busy = false;
+    try { py("game.undo(1)"); draw(getState()); } catch (_) {}
+    statusEl.textContent = "AI 執行錯誤，已撤回你的上一手，請重下：" + err;
+  }
+}
+
+canvas.addEventListener("click", async (e) => {
+  if (busy || !pyodide) return;
+  const rect = canvas.getBoundingClientRect();
+  const scale = canvas.width / rect.width;
+  const c = Math.floor(((e.clientX - rect.left) * scale - PAD) / CELL);
+  const r = Math.floor(((e.clientY - rect.top) * scale - PAD) / CELL);
+  if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) return;
+  const ok = py(`game.place(${r}, ${c})`);
+  if (!ok) return;
+  const s = refresh();
+  if (modeEl.value === "ai" && !s.winner) await aiTurn();
+});
+
+undoBtn.addEventListener("click", () => {
+  if (busy || !pyodide) return;
+  // 人機模式：悔到輪回人類（黑）為止——AI 剛下完是 2 手；人類致勝後悔棋是 1 手
+  py(modeEl.value === "ai"
+     ? "game.undo(1)\nif game.current != 1:\n    game.undo(1)"
+     : "game.undo(1)");
+  refresh();
+});
+
+document.getElementById("restart").addEventListener("click", () => {
+  if (busy || !pyodide) return;
+  py("game = Game()"); refresh();
+});
+let activeMode = "ai"; // 與棋局同步的生效模式（busy/載入中切換會被還原）
+modeEl.addEventListener("change", () => {
+  if (busy || !pyodide) { modeEl.value = activeMode; return; }
+  activeMode = modeEl.value;
+  py("game = Game()"); refresh();
+});
+
+(async () => {
+  pyodide = await loadPyodide();
+  const src = await (await fetch("gomoku.py")).text();
+  pyodide.runPython(src + "\ngame = Game()");
+  document.getElementById("loading").style.display = "none";
+  canvas.style.display = "block";
+  refresh();
+})().catch(err => {
+  document.getElementById("loading").textContent =
+    "載入失敗：" + err + "（若是本機直接開啟檔案，請改用 python3 -m http.server 後從 http://localhost:8000 開啟）";
+});
+</script>
+</body>
+</html>
