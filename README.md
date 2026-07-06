@@ -1,6 +1,16 @@
 # 五子棋 Gomoku — Python in the Browser
 
-15×15 五子棋。遊戲邏輯與 AI 全部在 `gomoku.py`（純 Python），由 [Pyodide](https://pyodide.org)（WebAssembly）直接在瀏覽器執行；`index.html` 的 JS 只負責畫棋盤與接滑鼠。可直接部署 GitHub Pages。
+**🎮 立即遊玩：<https://ychung1998.github.io/gomoku/>**
+
+15×15 五子棋。遊戲邏輯與 AI 全部在 `gomoku.py`（純 Python），由 [Pyodide](https://pyodide.org)（WebAssembly）直接在瀏覽器執行；`index.html` 的 JS 只負責畫棋盤與接滑鼠。
+
+## 怎麼玩
+
+1. 開啟上方網址，等 2–5 秒讓 Pyodide 載入（狀態列會顯示「輪到 ⚫ 黑方」即就緒）。
+2. 左上選單選模式：**人機對戰**（你執黑先手，AI 執白）或 **雙人 PK**（同一台輪流點）。
+3. 點棋盤交叉點落子，紅框標示最後一手；先連五者勝。
+4. **悔棋**：人機模式自動撤回「AI 一手＋你一手」，回到你行棋；雙人模式撤一手。
+5. **重新開始** 或切換模式都會開新局。
 
 ## 功能
 
@@ -22,16 +32,10 @@ python3 -m http.server 8000
 python3 -m pytest tests/ -q   # 11 個案例
 ```
 
-## 發佈到 GitHub Pages
+## CI/CD
 
-```bash
-git init && git add -A && git commit -m "gomoku: python-in-browser via pyodide"
-gh repo create gomoku --public --source=. --push
-gh api repos/{owner}/gomoku/pages -X POST -f 'source[branch]=main' -f 'source[path]=/'
-# 約 1 分鐘後： https://<你的帳號>.github.io/gomoku/
-```
-
-沒裝 `gh` 的話：GitHub 網頁建 repo → push → Settings → Pages → Branch 選 `main` / root。
+`.github/workflows/ci-deploy.yml`：push 到 `main` → 跑 13 個 pytest → **全綠才部署** Pages；PR 只跑測試不部署。
+啟用方式：repo **Settings → Pages → Source 改選 "GitHub Actions"**（否則仍是分支直接部署，測試失敗也會上線）。
 
 ## 檔案
 
