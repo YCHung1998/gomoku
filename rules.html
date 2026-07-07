@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>規則說明 — 五子棋 Gomoku</title>
+<style>
+  body { font-family: -apple-system, "PingFang TC", sans-serif; background: #f5efe4;
+         color: #4a3218; max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; line-height: 1.75; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.15rem; margin-top: 1.8em; border-bottom: 2px solid #d9a45b; padding-bottom: 4px; }
+  a { color: #8a5a1e; }
+  .back { display: inline-block; margin-bottom: 12px; padding: 6px 14px; background: #fff8ec;
+          border: 1px solid #b08d57; border-radius: 8px; text-decoration: none; }
+  .diagram { font-family: ui-monospace, monospace; background: #eee3cd; border-radius: 8px;
+             padding: 10px 14px; letter-spacing: .35em; white-space: pre; overflow-x: auto; }
+  .note { background: #fff8ec; border-left: 4px solid #d9a45b; padding: 8px 14px; border-radius: 0 8px 8px 0; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { border: 1px solid #c9a86f; padding: 6px 10px; text-align: left; }
+  th { background: #eedfc2; }
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← 返回遊戲</a>
+<h1>📖 規則說明</h1>
+
+<h2>基本規則</h2>
+<p>15×15 棋盤，黑方先行，雙方輪流在交叉點落子。先在橫、直、斜任一方向連成五子者獲勝。已落子的位置不能再下。</p>
+
+<h2>為什麼有「禁手」？</h2>
+<p>雙方實力相當時，黑方因先行優勢極大。連珠（Renju）規則因此對黑方加上行棋限制，讓對局更公平——黑方基本上只能以「四三」取勝；白方除了自行連五，還可以「逼禁」（迫使黑方走出禁手）取勝。本頁遊戲預設啟用連珠禁手，取消勾選「連珠禁手」即為無限制的自由規則。</p>
+
+<h2>黑方三種禁手（走出即被禁止落子）</h2>
+<table>
+  <tr><th>禁手</th><th>定義</th><th>示意（●黑 ○白 ╳禁點）</th></tr>
+  <tr>
+    <td><b>長連</b></td>
+    <td>六子或六子以上的連線。</td>
+    <td><div class="diagram">●●●╳●●</div></td>
+  </tr>
+  <tr>
+    <td><b>雙四（四四）</b></td>
+    <td>一子同時形成兩個「四」，無論活四或死四；也可能形成在同一條線上。</td>
+    <td><div class="diagram">●●●·╳·●●●</div></td>
+  </tr>
+  <tr>
+    <td><b>雙活三（三三）</b></td>
+    <td>一子同時形成兩個「活三」，且該子為兩個活三的交點。</td>
+    <td><div class="diagram">···●···
+···●···
+·●●╳···</div></td>
+  </tr>
+</table>
+<p class="note">三個三、三個四、四三三、四四三等複合型，同樣屬於禁手。<b>四三</b>（一個四＋一個活三）則是合法的，也是黑方主要的取勝手段。</p>
+
+<h2>關鍵例外與判定細節</h2>
+<p><b>五最大</b>：黑方一子同時形成「五連」與禁手時，判黑勝——成五優先於一切禁手。</p>
+<p><b>白方無限制</b>：白方沒有任何禁手，白方長連（六連以上）也算獲勝。</p>
+<p><b>黑方恰五才算勝</b>：連珠規則下黑方必須恰好五連；六連以上不是勝利而是長連禁手。</p>
+<p><b>活三的嚴格定義</b>：次一手可形成「活四」（兩端皆可成恰五的四），且該活四點不可同時形成五或禁手。因此有些「看起來像三三」的局面其實不是禁手——例如其中一條三被白子擋住端點、或其活四點會形成長連，該三便不算活三。本遊戲的判定引擎依此定義遞迴檢查。</p>
+
+<h2>操作提示</h2>
+<p>啟用禁手時，黑方點到禁手點會跳出「⛔ ○○禁手」訊息並拒絕落子，棋局不受影響，換個位置下即可。人機模式中你執黑、AI 執白；AI 若執黑也會自動避開禁手點。</p>
+
+<h2>規範來源</h2>
+<p>本頁規則整理自 <a href="https://587.renju.org.tw/teach/teach018.htm" target="_blank" rel="noopener">台灣五子棋教學網「禁手」篇</a>（587.renju.org.tw）。想深入了解多重禁手與逼禁技巧，推薦閱讀原站教學。</p>
+
+<a class="back" href="index.html">← 返回遊戲</a>
+</body>
+</html>

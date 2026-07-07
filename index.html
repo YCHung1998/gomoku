@@ -22,12 +22,16 @@
 </head>
 <body>
 <h1>五子棋 Gomoku</h1>
-<div class="sub">遊戲邏輯與 AI 由 <b>gomoku.py</b>（真 Python）透過 Pyodide 在你的瀏覽器中執行</div>
+<div class="sub">遊戲邏輯與 AI 由 <b>gomoku.py</b>（真 Python）透過 Pyodide 在你的瀏覽器中執行 ·
+  <a href="rules.html">📖 規則說明</a></div>
 <div id="toolbar">
   <select id="mode">
     <option value="ai">人機對戰（你執黑）</option>
     <option value="pvp">雙人 PK</option>
   </select>
+  <label style="display:flex;align-items:center;gap:4px;font-size:.95rem;color:#4a3218">
+    <input type="checkbox" id="renju" checked> 連珠禁手
+  </label>
   <button id="undo">悔棋</button>
   <button id="restart">重新開始</button>
 </div>
@@ -112,7 +116,11 @@ canvas.addEventListener("click", async (e) => {
   const r = Math.floor(((e.clientY - rect.top) * scale - PAD) / CELL);
   if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) return;
   const ok = py(`game.place(${r}, ${c})`);
-  if (!ok) return;
+  if (!ok) {
+    const reason = py("game.reject_reason or ''");
+    if (reason) statusEl.textContent = `⛔ ${reason}：黑方不得下此處（見規則說明；可取消勾選「連珠禁手」改玩自由規則）`;
+    return;
+  }
   const s = refresh();
   if (modeEl.value === "ai" && !s.winner) await aiTurn();
 });
@@ -126,21 +134,30 @@ undoBtn.addEventListener("click", () => {
   refresh();
 });
 
+const renjuEl = document.getElementById("renju");
+let activeMode = "ai";   // 與棋局同步的生效設定（busy/載入中切換會被還原）
+let activeRenju = true;
+function newGame() { py(`game = Game(renju=${activeRenju ? "True" : "False"})`); refresh(); }
+
 document.getElementById("restart").addEventListener("click", () => {
   if (busy || !pyodide) return;
-  py("game = Game()"); refresh();
+  newGame();
 });
-let activeMode = "ai"; // 與棋局同步的生效模式（busy/載入中切換會被還原）
 modeEl.addEventListener("change", () => {
   if (busy || !pyodide) { modeEl.value = activeMode; return; }
   activeMode = modeEl.value;
-  py("game = Game()"); refresh();
+  newGame();
+});
+renjuEl.addEventListener("change", () => {
+  if (busy || !pyodide) { renjuEl.checked = activeRenju; return; }
+  activeRenju = renjuEl.checked;
+  newGame();
 });
 
 (async () => {
   pyodide = await loadPyodide();
   const src = await (await fetch("gomoku.py")).text();
-  pyodide.runPython(src + "\ngame = Game()");
+  pyodide.runPython(src + "\ngame = Game(renju=True)");
   document.getElementById("loading").style.display = "none";
   canvas.style.display = "block";
   refresh();
