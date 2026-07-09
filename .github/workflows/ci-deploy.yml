@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pytest
-      - name: Run tests (13 cases)
+      - name: Run tests (26 cases)
         run: python -m pytest tests/ -v
 
   deploy:
